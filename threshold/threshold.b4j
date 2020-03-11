@@ -1,0 +1,121 @@
+﻿AppType=JavaFX
+Build1=Default,b4j.example
+File1=main.bjl
+FileGroup1=Default Group
+Group=Default Group
+Library1=jcore
+Library2=jfx
+Library3=opencv
+NumberOfFiles=1
+NumberOfLibraries=3
+NumberOfModules=0
+Version=7.8
+@EndOfDesignText@
+#Region Project Attributes 
+	#MainFormWidth: 600
+	#MainFormHeight: 600 
+#End Region
+
+#AdditionalJar: opencv-411
+
+Sub Process_Globals
+	Private fx As JFX
+	Private MainForm As Form
+	Private CheckBox1 As CheckBox
+	Private CheckBox2 As CheckBox
+	Private ImageView1 As ImageView
+	Private ImageView2 As ImageView
+	Private ImageView3 As ImageView
+	Private Spinner1 As Spinner
+	Private Label1 As Label
+	Private Label2 As Label
+End Sub
+
+Sub AppStart (Form1 As Form, Args() As String)
+	MainForm = Form1
+	MainForm.RootPane.LoadLayout("main") 'Load the layout file.
+	MainForm.Show
+	cv2.Initialize
+	loadOpenCV
+End Sub
+
+Sub loadOpenCV
+	Log(cv2.NATIVE_LIBRARY_NAME)
+	Dim System As JavaObject
+	System.InitializeStatic("java.lang.System")
+	System.RunMethod("loadLibrary",Array(cv2.NATIVE_LIBRARY_NAME))
+End Sub
+
+'Return true to allow the default exceptions handler to handle the uncaught exception.
+Sub Application_Error (Error As Exception, StackTrace As String) As Boolean
+	Return True
+End Sub
+
+Sub Spinner1_ValueChanged (Value As Object)
+	threshold
+	Label2.Text=1-Label1.Text/255
+End Sub
+
+Sub CheckBox2_CheckedChange(Checked As Boolean)
+	threshold
+End Sub
+
+Sub CheckBox1_CheckedChange(Checked As Boolean)
+	threshold
+End Sub
+
+Sub Button1_MouseClicked (EventData As MouseEvent)
+	Dim fc As FileChooser
+	fc.Initialize
+	Dim path As String=fc.ShowOpen(MainForm)
+	If File.Exists(path,"") Then
+		Dim Bytes() As Byte
+		Bytes=File.ReadBytes(path,"")
+		Dim srcMat As cvMat
+		srcMat=cv2.bytesToMat(Bytes)
+		ImageView1.SetImage(fx.LoadImage(path,""))
+		Dim gray As cvMat
+		gray.Initialize(Null)
+		cv2.cvtColor(srcMat,gray,"COLOR_BGR2GRAY")
+		File.WriteBytes(File.DirApp,"gray.jpg",gray.mat2bytes)
+		ImageView2.SetImage(fx.LoadImage(File.DirApp,"gray.jpg"))
+		ImageView2.Tag=gray
+		threshold
+	End If
+End Sub
+
+Sub threshold
+	If ImageView2.Tag<>Null Then
+		Dim thresh As cvMat
+		thresh.Initialize(Null)
+		Dim binary As Int
+		If CheckBox1.Checked Then
+			binary=cv2.procEnum("THRESH_BINARY_INV")
+		Else
+			binary=cv2.procEnum("THRESH_BINARY")
+		End If
+		Dim otsu As Int
+		If CheckBox2.Checked Then
+			otsu=cv2.procEnum("THRESH_OTSU")
+		End If
+		Dim value As Double = cv2.threshold(ImageView2.Tag,thresh,Spinner1.Value,255,binary+otsu)
+		Label1.Text=value
+		File.WriteBytes(File.DirApp,"thresh.jpg",thresh.mat2bytes)
+		ImageView3.SetImage(fx.LoadImage(File.DirApp,"thresh.jpg"))
+	End If
+End Sub
+
+Sub ImageView2_MouseMoved (EventData As MouseEvent)
+	Return
+	Try
+		Dim gray As cvMat=ImageView2.Tag
+		Dim X,Y As Int
+		Dim ratio As Double=ImageView2.Width/gray.Cols
+		X=Max(0,Min(EventData.X/ratio,gray.Cols-1))
+		Y=Max(0,Min(EventData.Y/ratio,gray.Rows-1))
+		'Log(X&","&Y)
+		Label2.text=gray.get(Array As Int(X,Y))(0)
+	Catch
+		Log(LastException)
+	End Try
+End Sub
