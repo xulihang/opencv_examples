@@ -1,0 +1,183 @@
+﻿AppType=JavaFX
+Build1=Default,b4j.example
+File1=ImageWindow.bjl
+File2=iv.bjl
+File3=main.bjl
+FileGroup1=Default Group
+FileGroup2=Default Group
+FileGroup3=Default Group
+Group=Default Group
+Library1=jcore
+Library2=jfx
+Library3=opencv
+Library4=b4xcollections
+Module1=|relative|..\shared\ImageWindow
+NumberOfFiles=3
+NumberOfLibraries=4
+NumberOfModules=1
+Version=7.8
+@EndOfDesignText@
+#Region Project Attributes 
+	#MainFormWidth: 600
+	#MainFormHeight: 600 
+#End Region
+
+#AdditionalJar: opencv-411
+
+Sub Process_Globals
+	Private fx As JFX
+	Private MainForm As Form
+	Private CheckBox1 As CheckBox
+	Private CheckBox2 As CheckBox
+	Private IW1 As ImageWindow
+	Private IW2 As ImageWindow
+	Private Spinner1 As Spinner
+	Private Label1 As Label
+	Private Label2 As Label
+	Private gray As cvMat
+	Private thresh As cvMat
+	Private grayExist As Boolean=False
+	Private threshExist As Boolean=False
+	Private methodComboBox As ComboBox
+	Private modeComboBox As ComboBox
+	Private ListView1 As ListView
+End Sub
+
+Sub AppStart (Form1 As Form, Args() As String)
+	cv2.Initialize
+	loadOpenCV
+	gray.Initialize(Null)
+	thresh.Initialize(Null)
+	MainForm = Form1
+	MainForm.RootPane.LoadLayout("main") 'Load the layout file.
+	MainForm.Show
+	MainForm.AlwaysOnTop=True
+	IW1.Initialize("Binary")
+	IW1.Show
+	IW2.Initialize("Contours")
+	IW2.Show
+	init
+End Sub
+
+Sub init
+	modeComboBox.Items.Add("RETR_CCOMP")
+	modeComboBox.Items.Add("RETR_EXTERNAL")
+	modeComboBox.Items.Add("RETR_LIST")
+	modeComboBox.Items.Add("RETR_TREE")
+	methodComboBox.Items.Add("CHAIN_APPROX_NONE")
+	methodComboBox.Items.Add("CHAIN_APPROX_SIMPLE")
+End Sub
+
+Sub loadOpenCV
+	Log(cv2.NATIVE_LIBRARY_NAME)
+	Dim System As JavaObject
+	System.InitializeStatic("java.lang.System")
+	'System.RunMethod("loadLibrary",Array(cv2.NATIVE_LIBRARY_NAME))
+	System.RunMethod("load",Array(File.Combine("E:\B4J\ImageTrans\Objects","opencv_java411.dll")))
+End Sub
+
+'Return true to allow the default exceptions handler to handle the uncaught exception.
+Sub Application_Error (Error As Exception, StackTrace As String) As Boolean
+	Return True
+End Sub
+
+Sub Spinner1_ValueChanged (Value As Object)
+	threshold
+	Label2.Text=1-Label1.Text/255
+End Sub
+
+Sub CheckBox2_CheckedChange(Checked As Boolean)
+	threshold
+End Sub
+
+Sub CheckBox1_CheckedChange(Checked As Boolean)
+	threshold
+End Sub
+
+Sub Button1_MouseClicked (EventData As MouseEvent)
+	Dim fc As FileChooser
+	fc.Initialize
+	Dim path As String=fc.ShowOpen(MainForm)
+	If File.Exists(path,"") Then
+		Dim Bytes() As Byte
+		Bytes=File.ReadBytes(path,"")
+		Dim srcMat As cvMat
+		srcMat=cv2.bytesToMat(Bytes)
+		cv2.cvtColor(srcMat,gray,"COLOR_BGR2GRAY")
+		grayExist=True
+		threshold
+	End If
+End Sub
+
+Sub threshold
+	If grayExist Then
+		Dim binary As Int
+		If CheckBox1.Checked Then
+			binary=cv2.procEnum("THRESH_BINARY_INV")
+		Else
+			binary=cv2.procEnum("THRESH_BINARY")
+		End If
+		Dim otsu As Int
+		If CheckBox2.Checked Then
+			otsu=cv2.procEnum("THRESH_OTSU")
+		End If
+		Dim value As Double = cv2.threshold(gray,thresh,Spinner1.Value,255,binary+otsu)
+		Label1.Text=value
+		File.WriteBytes(File.DirApp,"thresh.jpg",thresh.mat2bytes)
+		IW1.SetImage(fx.LoadImage(File.DirApp,"thresh.jpg"))
+		threshExist=True
+	End If
+End Sub
+
+Sub findContours
+	If threshExist Then
+		Dim map1 As Map
+		map1.Initialize
+		Dim hierarchy As cvMat
+		hierarchy.Initialize(Null)
+		Dim contours As List
+		contours.Initialize
+		cv2.findContours(thresh,contours,hierarchy,cv2.procEnum(modeComboBox.Items.Get(modeComboBox.SelectedIndex)),cv2.procEnum(methodComboBox.Items.Get(methodComboBox.SelectedIndex)))
+		ListView1.Items.Clear
+		Dim set As B4XSet
+		set.Initialize
+		For i =0 To contours.Size-1
+			Dim data() As Double=hierarchy.get(Array As Int(0,i))
+			set.Add(data(3))
+		Next
+		ListView1.Items.AddAll(set.AsList)
+		map1.Put("hierarchy",hierarchy)
+		map1.Put("contours",contours)
+		ListView1.Tag=map1
+	End If
+End Sub
+
+Sub Button2_MouseClicked (EventData As MouseEvent)
+	findContours
+	draw(-1,True)
+End Sub
+
+Sub draw(level As Double,all As Boolean)
+	Dim map1 As Map=ListView1.Tag
+	Dim contours As List=map1.Get("contours")
+	Dim hierarchy As cvMat=map1.Get("hierarchy")
+	Dim empty As cvMat
+	empty=cv2.matZeros(Array(thresh.Rows,thresh.Cols,thresh.dtype))
+	Dim color As JavaObject
+	color=cv2.Scalar(255,255,255)
+	For i=0 To contours.Size-1
+		Dim data() As Double=hierarchy.get(Array As Int(0,i))
+		If all=False And data(3)<>level Then
+			Continue
+		End If
+		cv2.drawContours(empty,contours,i,color,2)
+	Next
+	File.WriteBytes(File.DirApp,"contours.jpg",empty.mat2bytes)
+	IW2.SetImage(fx.LoadImage(File.DirApp,"contours.jpg"))
+End Sub
+
+Sub ListView1_SelectedIndexChanged(Index As Int)
+	If Index<>-1 Then
+	    draw(ListView1.Items.Get(Index),False)
+	End If
+End Sub

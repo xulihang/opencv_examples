@@ -4,6 +4,6 @@ ModuleBreakpoints0=
 ModuleBreakpoints1=
 ModuleClosedNodes0=1
 ModuleClosedNodes1=
-NavigationStack=ImageWindow,setImage,19,0,Main,ImageView2_MouseMoved,103,5,Main,AppStart,27,6,Visual Designer,iv.bjl,-100,2,Visual Designer,ImageWindow.bjl,-100,6,ImageWindow,Show,20,0,ImageWindow,Class_Globals,2,6,ImageWindow,Initialize,13,6,ImageWindow,frm_Resize,29,6
+NavigationStack=ImageWindow,setImage,19,0,Main,ImageView2_MouseMoved,103,5,Main,AppStart,27,6,Visual Designer,iv.bjl,-100,2,Visual Designer,ImageWindow.bjl,-100,6,ImageWindow,Show,20,0,ImageWindow,Initialize,13,6,ImageWindow,frm_Resize,29,6,Main,loadOpenCV,40,2,ImageWindow,Class_Globals,0,6,Main,Process_Globals,9,0
 SelectedBuild=0
 VisibleModules=1
