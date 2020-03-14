@@ -31,16 +31,19 @@ Sub Process_Globals
 	Private CheckBox2 As CheckBox
 	Private IW1 As ImageWindow
 	Private IW2 As ImageWindow
+	Private IW3 As ImageWindow
 	Private Spinner1 As Spinner
 	Private Label1 As Label
 	Private Label2 As Label
 	Private gray As cvMat
 	Private thresh As cvMat
+	Private srcMat As cvMat
 	Private grayExist As Boolean=False
 	Private threshExist As Boolean=False
 	Private methodComboBox As ComboBox
 	Private modeComboBox As ComboBox
 	Private ListView1 As ListView
+	Private inpaintComboBox As ComboBox
 End Sub
 
 Sub AppStart (Form1 As Form, Args() As String)
@@ -48,6 +51,7 @@ Sub AppStart (Form1 As Form, Args() As String)
 	loadOpenCV
 	gray.Initialize(Null)
 	thresh.Initialize(Null)
+	srcMat.Initialize(Null)
 	MainForm = Form1
 	MainForm.RootPane.LoadLayout("main") 'Load the layout file.
 	MainForm.Show
@@ -56,6 +60,8 @@ Sub AppStart (Form1 As Form, Args() As String)
 	IW1.Show
 	IW2.Initialize("Contours")
 	IW2.Show
+	IW3.Initialize("inpaint")
+	IW3.Show
 	init
 End Sub
 
@@ -64,8 +70,13 @@ Sub init
 	modeComboBox.Items.Add("RETR_EXTERNAL")
 	modeComboBox.Items.Add("RETR_LIST")
 	modeComboBox.Items.Add("RETR_TREE")
+	modeComboBox.SelectedIndex=0
 	methodComboBox.Items.Add("CHAIN_APPROX_NONE")
 	methodComboBox.Items.Add("CHAIN_APPROX_SIMPLE")
+	methodComboBox.SelectedIndex=0
+	inpaintComboBox.Items.Add("INPAINT_TELEA")
+	inpaintComboBox.Items.Add("INPAINT_NS")
+	inpaintComboBox.SelectedIndex=0
 End Sub
 
 Sub loadOpenCV
@@ -101,7 +112,6 @@ Sub Button1_MouseClicked (EventData As MouseEvent)
 	If File.Exists(path,"") Then
 		Dim Bytes() As Byte
 		Bytes=File.ReadBytes(path,"")
-		Dim srcMat As cvMat
 		srcMat=cv2.bytesToMat(Bytes)
 		cv2.cvtColor(srcMat,gray,"COLOR_BGR2GRAY")
 		grayExist=True
@@ -170,14 +180,28 @@ Sub draw(level As Double,all As Boolean)
 		If all=False And data(3)<>level Then
 			Continue
 		End If
-		cv2.drawContours(empty,contours,i,color,2)
+		cv2.drawContours(empty,contours,i,color,-1)
 	Next
 	File.WriteBytes(File.DirApp,"contours.jpg",empty.mat2bytes)
 	IW2.SetImage(fx.LoadImage(File.DirApp,"contours.jpg"))
+	IW2.Tag=empty
 End Sub
 
 Sub ListView1_SelectedIndexChanged(Index As Int)
 	If Index<>-1 Then
 	    draw(ListView1.Items.Get(Index),False)
 	End If
+End Sub
+
+Sub inpaint
+	Dim dst As cvMat
+	dst=cv2.matZeros(Array(srcMat.Rows,srcMat.Cols,srcMat.dtype))
+	cv2.inpaint(srcMat,IW2.Tag,dst,3,cv2.PhotoEnum(inpaintComboBox.Items.Get(inpaintComboBox.SelectedIndex)))
+	File.WriteBytes(File.DirApp,"removed.jpg",dst.mat2bytes)
+	IW3.setimage(fx.LoadImage(File.DirApp,"removed.jpg"))
+	IW3.Show
+End Sub
+
+Sub Button3_MouseClicked (EventData As MouseEvent)
+	inpaint
 End Sub
