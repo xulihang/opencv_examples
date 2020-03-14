@@ -55,7 +55,8 @@ Sub loadOpenCV
 	Log(cv2.NATIVE_LIBRARY_NAME)
 	Dim System As JavaObject
 	System.InitializeStatic("java.lang.System")
-	System.RunMethod("loadLibrary",Array(cv2.NATIVE_LIBRARY_NAME))
+	'System.RunMethod("loadLibrary",Array(cv2.NATIVE_LIBRARY_NAME))
+	System.RunMethod("load",Array(File.Combine("E:\B4J\ImageTrans\Objects","opencv_java411.dll")))
 End Sub
 
 'Return true to allow the default exceptions handler to handle the uncaught exception.
