@@ -1,6 +1,9 @@
 ﻿ModuleBookmarks0=
+ModuleBookmarks1=
 ModuleBreakpoints0=
+ModuleBreakpoints1=
 ModuleClosedNodes0=1
-NavigationStack=Main,CheckBox2_CheckedChange,33,0,Main,CheckBox1_CheckedChange,46,0,Main,AppStart,22,4,Main,Button1_MouseClicked,61,6,Main,Process_Globals,18,0,Main,loadOpenCV,31,0,Main,ImageView2_MouseMoved,94,6,Visual Designer,main.bjl,-100,6,Main,threshold,92,6,Main,Spinner1_ValueChanged,42,4
+ModuleClosedNodes1=
+NavigationStack=ImageWindow,setImage,19,0,Main,ImageView2_MouseMoved,103,5,Main,AppStart,27,6,Visual Designer,iv.bjl,-100,2,Visual Designer,ImageWindow.bjl,-100,6,ImageWindow,Show,20,0,ImageWindow,Class_Globals,2,6,ImageWindow,Initialize,13,6,ImageWindow,frm_Resize,29,6
 SelectedBuild=0
-VisibleModules=
+VisibleModules=1

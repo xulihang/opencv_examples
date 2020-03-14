@@ -1,14 +1,19 @@
 ﻿AppType=JavaFX
 Build1=Default,b4j.example
-File1=main.bjl
+File1=ImageWindow.bjl
+File2=iv.bjl
+File3=main.bjl
 FileGroup1=Default Group
+FileGroup2=Default Group
+FileGroup3=Default Group
 Group=Default Group
 Library1=jcore
 Library2=jfx
 Library3=opencv
-NumberOfFiles=1
+Module1=ImageWindow
+NumberOfFiles=3
 NumberOfLibraries=3
-NumberOfModules=0
+NumberOfModules=1
 Version=7.8
 @EndOfDesignText@
 #Region Project Attributes 
@@ -23,9 +28,9 @@ Sub Process_Globals
 	Private MainForm As Form
 	Private CheckBox1 As CheckBox
 	Private CheckBox2 As CheckBox
-	Private ImageView1 As ImageView
-	Private ImageView2 As ImageView
-	Private ImageView3 As ImageView
+	Private IW1 As ImageWindow
+	Private IW2 As ImageWindow
+	Private IW3 As ImageWindow
 	Private Spinner1 As Spinner
 	Private Label1 As Label
 	Private Label2 As Label
@@ -35,6 +40,13 @@ Sub AppStart (Form1 As Form, Args() As String)
 	MainForm = Form1
 	MainForm.RootPane.LoadLayout("main") 'Load the layout file.
 	MainForm.Show
+	MainForm.AlwaysOnTop=True
+	IW1.Initialize("Origin")
+	IW2.Initialize("Gray")
+	IW3.Initialize("Binary")
+	IW1.Show
+	IW2.Show
+	IW3.Show
 	cv2.Initialize
 	loadOpenCV
 End Sub
@@ -73,19 +85,19 @@ Sub Button1_MouseClicked (EventData As MouseEvent)
 		Bytes=File.ReadBytes(path,"")
 		Dim srcMat As cvMat
 		srcMat=cv2.bytesToMat(Bytes)
-		ImageView1.SetImage(fx.LoadImage(path,""))
+		IW1.SetImage(fx.LoadImage(path,""))
 		Dim gray As cvMat
 		gray.Initialize(Null)
 		cv2.cvtColor(srcMat,gray,"COLOR_BGR2GRAY")
 		File.WriteBytes(File.DirApp,"gray.jpg",gray.mat2bytes)
-		ImageView2.SetImage(fx.LoadImage(File.DirApp,"gray.jpg"))
-		ImageView2.Tag=gray
+		IW2.SetImage(fx.LoadImage(File.DirApp,"gray.jpg"))
+		IW2.Tag=gray
 		threshold
 	End If
 End Sub
 
 Sub threshold
-	If ImageView2.Tag<>Null Then
+	If IW2.Tag<>Null Then
 		Dim thresh As cvMat
 		thresh.Initialize(Null)
 		Dim binary As Int
@@ -98,19 +110,19 @@ Sub threshold
 		If CheckBox2.Checked Then
 			otsu=cv2.procEnum("THRESH_OTSU")
 		End If
-		Dim value As Double = cv2.threshold(ImageView2.Tag,thresh,Spinner1.Value,255,binary+otsu)
+		Dim value As Double = cv2.threshold(IW2.Tag,thresh,Spinner1.Value,255,binary+otsu)
 		Label1.Text=value
 		File.WriteBytes(File.DirApp,"thresh.jpg",thresh.mat2bytes)
-		ImageView3.SetImage(fx.LoadImage(File.DirApp,"thresh.jpg"))
+		IW3.SetImage(fx.LoadImage(File.DirApp,"thresh.jpg"))
 	End If
 End Sub
 
 Sub ImageView2_MouseMoved (EventData As MouseEvent)
 	Return
 	Try
-		Dim gray As cvMat=ImageView2.Tag
+		Dim gray As cvMat=IW2.Tag
 		Dim X,Y As Int
-		Dim ratio As Double=ImageView2.Width/gray.Cols
+		Dim ratio As Double=IW2.iv.Width/gray.Cols
 		X=Max(0,Min(EventData.X/ratio,gray.Cols-1))
 		Y=Max(0,Min(EventData.Y/ratio,gray.Rows-1))
 		'Log(X&","&Y)
