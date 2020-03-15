@@ -44,6 +44,12 @@ Sub Process_Globals
 	Private modeComboBox As ComboBox
 	Private ListView1 As ListView
 	Private inpaintComboBox As ComboBox
+	Private Threshold1Slider As Slider
+	Private ThresholdSlider2 As Slider
+	Private Threshold1Label As Label
+	Private Threshold2Label As Label
+	Private HeightSpinner As Spinner
+	Private WidthSpinner As Spinner
 End Sub
 
 Sub AppStart (Form1 As Form, Args() As String)
@@ -153,7 +159,7 @@ Sub findContours
 		set.Initialize
 		For i =0 To contours.Size-1
 			Dim data() As Double=hierarchy.get(Array As Int(0,i))
-			set.Add(data(3))
+			set.Add(Values2String(data))
 		Next
 		ListView1.Items.AddAll(set.AsList)
 		map1.Put("hierarchy",hierarchy)
@@ -187,9 +193,28 @@ Sub draw(level As Double,all As Boolean)
 	IW2.Tag=empty
 End Sub
 
+Sub Values2String(values() As Double) As String
+	Dim sb As StringBuilder
+	sb.Initialize
+	Dim index=0 As Int
+	For Each value As Double In values
+		sb.Append(value)
+		If index<>values.Length-1 Then
+			sb.Append(",")
+		End If
+		index=index+1
+	Next
+	Return sb.ToString
+End Sub
+
+Sub String2Values(str As String) As Object()
+	Return Regex.Split(",",str)
+End Sub
+
 Sub ListView1_SelectedIndexChanged(Index As Int)
 	If Index<>-1 Then
-	    draw(ListView1.Items.Get(Index),False)
+		Dim data() As Object=String2Values(ListView1.Items.Get(Index))
+	    draw(data(3),False)
 	End If
 End Sub
 
@@ -204,4 +229,37 @@ End Sub
 
 Sub Button3_MouseClicked (EventData As MouseEvent)
 	inpaint
+End Sub
+
+Sub Button4_MouseClicked (EventData As MouseEvent)
+	cv2.canny(srcMat,thresh,Threshold1Slider.Value,ThresholdSlider2.Value)
+	File.WriteBytes(File.DirApp,"thresh.jpg",thresh.mat2bytes)
+	IW1.SetImage(fx.LoadImage(File.DirApp,"thresh.jpg"))
+	threshExist=True
+End Sub
+
+Sub ThresholdSlider2_ValueChange (Value As Double)
+	Threshold2Label.Text=Value
+End Sub
+
+Sub Threshold1Slider_ValueChange (Value As Double)
+	Threshold1Label.Text=Value
+End Sub
+
+Sub Button6_MouseClicked (EventData As MouseEvent)
+	cv2.erode(thresh,thresh,cv2.getStructuringElement("MORPH_RECT",WidthSpinner.Value,HeightSpinner.Value))
+	File.WriteBytes(File.DirApp,"thresh.jpg",thresh.mat2bytes)
+	IW1.SetImage(fx.LoadImage(File.DirApp,"thresh.jpg"))
+End Sub
+
+Sub Button5_MouseClicked (EventData As MouseEvent)
+	cv2.dilate(thresh,thresh,cv2.getStructuringElement("MORPH_RECT",WidthSpinner.Value,HeightSpinner.Value))
+	File.WriteBytes(File.DirApp,"thresh.jpg",thresh.mat2bytes)
+	IW1.SetImage(fx.LoadImage(File.DirApp,"thresh.jpg"))
+End Sub
+
+Sub Button7_MouseClicked (EventData As MouseEvent)
+	cv2.bitwise_not(thresh,thresh)
+	File.WriteBytes(File.DirApp,"thresh.jpg",thresh.mat2bytes)
+	IW1.SetImage(fx.LoadImage(File.DirApp,"thresh.jpg"))
 End Sub

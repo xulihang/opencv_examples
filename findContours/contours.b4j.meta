@@ -4,6 +4,6 @@ ModuleBreakpoints0=
 ModuleBreakpoints1=
 ModuleClosedNodes0=
 ModuleClosedNodes1=
-NavigationStack=Main,Spinner1_ValueChanged,66,0,Main,Button1_MouseClicked,86,0,Main,ListView1_SelectedIndexChanged,164,6,Main,Button3_MouseClicked,176,0,Main,draw,148,6,Main,AppStart,43,4,Visual Designer,main.bjl,-100,6,Main,Process_Globals,26,6,Main,init,53,6,Main,inpaint,179,6
+NavigationStack=Main,AppStart,42,0,Main,Process_Globals,19,6,Main,draw,156,0,Main,Button2_MouseClicked,152,0,Main,Threshold1Slider_ValueChange,225,3,Main,Button4_MouseClicked,220,6,Main,Button6_MouseClicked,231,6,Visual Designer,main.bjl,-100,6,Main,Button5_MouseClicked,237,1,Main,Button7_MouseClicked,242,0
 SelectedBuild=0
 VisibleModules=1
