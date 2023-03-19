@@ -1,0 +1,137 @@
+﻿AppType=JavaFX
+Build1=Default,b4j.example
+File1=ImageWindow.bjl
+File2=iv.bjl
+File3=main.bjl
+FileGroup1=Default Group
+FileGroup2=Default Group
+FileGroup3=Default Group
+Group=Default Group
+Library1=jcore
+Library2=jfx
+Library3=opencv
+Module1=|relative|..\shared\ImageWindow
+NumberOfFiles=3
+NumberOfLibraries=3
+NumberOfModules=1
+Version=9.8
+@EndOfDesignText@
+#Region Project Attributes 
+	#MainFormWidth: 600
+	#MainFormHeight: 600 
+#End Region
+
+#AdditionalJar: opencv-455
+
+Sub Process_Globals
+	Private fx As JFX
+	Private MainForm As Form
+	Private IW1 As ImageWindow
+	Private IW2 As ImageWindow
+	Private IW3 As ImageWindow
+	Private Spinner1 As Spinner
+	Private Label1 As Label
+	Private Label2 As Label
+	Private Spinner2 As Spinner
+End Sub
+
+Sub AppStart (Form1 As Form, Args() As String)
+	MainForm = Form1
+	MainForm.RootPane.LoadLayout("main") 'Load the layout file.
+	MainForm.Show
+	MainForm.AlwaysOnTop=True
+	IW1.Initialize("Origin")
+	IW2.Initialize("Gray")
+	IW3.Initialize("Edges")
+	IW1.Show
+	IW2.Show
+	IW3.Show
+	cv2.Initialize
+	loadOpenCV
+End Sub
+
+Sub loadOpenCV
+	Log(cv2.NATIVE_LIBRARY_NAME)
+	Dim System As JavaObject
+	System.InitializeStatic("java.lang.System")
+	'System.RunMethod("loadLibrary",Array(cv2.NATIVE_LIBRARY_NAME))
+	System.RunMethod("load",Array(File.Combine("E:\B4J\ImageTrans\Objects","opencv_java455.dll")))
+End Sub
+
+'Return true to allow the default exceptions handler to handle the uncaught exception.
+Sub Application_Error (Error As Exception, StackTrace As String) As Boolean
+	Return True
+End Sub
+
+Sub Spinner1_ValueChanged (Value As Object)
+	edgeDetection
+End Sub
+
+
+Private Sub Spinner2_ValueChanged (Value As Object)
+	edgeDetection
+End Sub
+
+Sub Button1_MouseClicked (EventData As MouseEvent)
+	Dim fc As FileChooser
+	fc.Initialize
+	Dim path As String=fc.ShowOpen(MainForm)
+	If File.Exists(path,"") Then
+		Dim Bytes() As Byte
+		Bytes=File.ReadBytes(path,"")
+		Dim srcMat As cvMat
+		srcMat=cv2.bytesToMat(Bytes)
+		IW1.SetImage(fx.LoadImage(path,""))
+		Dim gray As cvMat
+		gray.Initialize(Null)
+		cv2.cvtColor(srcMat,gray,"COLOR_BGR2GRAY")
+		File.WriteBytes(File.DirApp,"gray.jpg",gray.mat2bytes)
+		IW2.SetImage(fx.LoadImage(File.DirApp,"gray.jpg"))
+		IW2.Tag=gray
+		edgeDetection
+	End If
+End Sub
+
+Sub edgeDetection
+	If IW2.Tag<>Null Then
+		Dim edges As cvMat
+		edges.Initialize(Null)
+		cv2.Canny(IW2.Tag,edges,Spinner1.Value,Spinner2.Value)
+		File.WriteBytes(File.DirApp,"edges.jpg",edges.mat2bytes)
+		IW3.SetImage(fx.LoadImage(File.DirApp,"edges.jpg"))
+		IW3.Tag = edges
+	End If
+End Sub
+
+Sub ImageView2_MouseMoved (EventData As MouseEvent)
+	Return
+	Try
+		Dim gray As cvMat=IW2.Tag
+		Dim X,Y As Int
+		Dim ratio As Double=IW2.iv.Width/gray.Cols
+		X=Max(0,Min(EventData.X/ratio,gray.Cols-1))
+		Y=Max(0,Min(EventData.Y/ratio,gray.Rows-1))
+		'Log(X&","&Y)
+		Label2.text=gray.get(Array As Int(X,Y))(0)
+	Catch
+		Log(LastException)
+	End Try
+End Sub
+
+Private Sub Button3_MouseClicked (EventData As MouseEvent)
+	Dim mat As cvMat = IW3.Tag
+	If mat <> Null Then
+		cv2.dilate(mat,mat,cv2.getStructuringElement("MORPH_RECT",2,2))
+		File.WriteBytes(File.DirApp,"edges.jpg",mat.mat2bytes)
+		IW3.SetImage(fx.LoadImage(File.DirApp,"edges.jpg"))
+	End If
+End Sub
+
+Private Sub Button2_MouseClicked (EventData As MouseEvent)
+	Dim mat As cvMat = IW3.Tag
+	If mat <> Null Then
+		cv2.erode(mat,mat,cv2.getStructuringElement("MORPH_RECT",2,2))
+		File.WriteBytes(File.DirApp,"edges.jpg",mat.mat2bytes)
+		IW3.SetImage(fx.LoadImage(File.DirApp,"edges.jpg"))
+	End If
+End Sub
