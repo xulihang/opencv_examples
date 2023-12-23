@@ -1,0 +1,15 @@
+﻿ModuleBookmarks0=
+ModuleBookmarks1=
+ModuleBookmarks2=
+ModuleBookmarks3=
+ModuleBreakpoints0=
+ModuleBreakpoints1=
+ModuleBreakpoints2=
+ModuleBreakpoints3=
+ModuleClosedNodes0=
+ModuleClosedNodes1=
+ModuleClosedNodes2=
+ModuleClosedNodes3=
+NavigationStack=Main,loadOpenCV,30,0,Main,Image2cvMat,48,0,cv2,Process_Globals,9,0,cv2,findContours,110,0,cv2,minAreaRect,112,6,cv2,mat2fFromPointsList,216,0,Main,MatOfPointAsMatOfPoint2F,57,3,Main,AppStart,21,6,Main,DetectTextRotation,52,6,Main,Button1_Click,41,6
+SelectedBuild=0
+VisibleModules=3,1,2

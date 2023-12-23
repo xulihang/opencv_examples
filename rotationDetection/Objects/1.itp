@@ -1,0 +1,71 @@
+{
+    "settings": {
+        "targetLang": "en",
+        "sourceLang": "zh"
+    },
+    "images": {
+        "test.jpg": {
+            "boxes": [
+                {
+                    "suitableSize": 43,
+                    "geometry": {
+                        "X": 46,
+                        "width": 186,
+                        "Y": 27,
+                        "height": 82
+                    },
+                    "text": "",
+                    "target": ""
+                }
+            ],
+            "text-removed": true
+        },
+        "thresh.jpg": {
+            "boxes": []
+        },
+        "test2.jpg": {
+            "boxes": [
+                {
+                    "targetGeometry": {
+                        "X": 201,
+                        "width": 176,
+                        "Y": 33,
+                        "height": 72
+                    },
+                    "geometry": {
+                        "X": 196,
+                        "width": 186,
+                        "Y": 28,
+                        "height": 82
+                    },
+                    "text": "",
+                    "target": ""
+                }
+            ]
+        }
+    },
+    "UISettings": {
+        "autosave": false,
+        "chinesePunc": false,
+        "dividerPosition": [
+            0.03571428571428571,
+            0.6510204081632653
+        ],
+        "translateAfterOCR": false,
+        "vertical": false,
+        "percent": 100,
+        "autoClean": true,
+        "removeSpaces": false,
+        "precisionMode": true,
+        "OCRAfterSelection": false,
+        "autoCapital": false,
+        "pannable": false,
+        "opacity": 100
+    },
+    "terms": {},
+    "dirPath": "E:\\B4J\\git\\opencv_examples\\rotationDetection\\Objects",
+    "previousOCR": {
+        "engineName": "ocrspace",
+        "lang": "English"
+    }
+}
