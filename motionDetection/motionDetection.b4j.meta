@@ -1,0 +1,15 @@
+﻿ModuleBookmarks0=
+ModuleBookmarks1=
+ModuleBookmarks2=
+ModuleBookmarks3=
+ModuleBreakpoints0=
+ModuleBreakpoints1=
+ModuleBreakpoints2=
+ModuleBreakpoints3=
+ModuleClosedNodes0=
+ModuleClosedNodes1=
+ModuleClosedNodes2=
+ModuleClosedNodes3=
+NavigationStack=cvMat,Class_Globals,0,0,cv2,Process_Globals,6,0,cv2,MatOfRect,30,0,cv2,contourArea,299,4,Main,points2Mat,79,0,Main,DetectTextRotation,112,0,Main,Button1_Click,46,6,Main,DetectMotion,49,6,cv2,vconcat,297,0,cv2,absdiff,30,6
+SelectedBuild=0
+VisibleModules=1,2,3

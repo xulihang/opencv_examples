@@ -1,0 +1,157 @@
+﻿AppType=JavaFX
+Build1=Default,b4j.example
+File1=main.bjl
+FileGroup1=Default Group
+Group=Default Group
+Library1=javaobject
+Library2=jcore
+Library3=jfx
+Library4=threading
+Library5=xui views
+Module1=cv2
+Module2=cvMat
+Module3=|relative|..\shared\ImageWindow
+NumberOfFiles=1
+NumberOfLibraries=5
+NumberOfModules=3
+Version=9.8
+@EndOfDesignText@
+#Region Project Attributes 
+	#MainFormWidth: 600
+	#MainFormHeight: 600 
+#End Region
+
+#AdditionalJar: opencv-455
+
+Sub Process_Globals
+	Private fx As JFX
+	Private MainForm As Form
+	Private Button1 As Button
+	Private ImageView1 As ImageView
+End Sub
+
+Sub AppStart (Form1 As Form, Args() As String)
+	MainForm = Form1
+	MainForm.RootPane.LoadLayout("main") 'Load the layout file.
+	MainForm.Show
+	MainForm.AlwaysOnTop=True
+	cv2.Initialize
+	loadOpenCV
+	ImageView1.SetImage(fx.LoadImage(File.DirApp,"before.jpg"))
+End Sub
+
+Sub loadOpenCV
+	Log(cv2.NATIVE_LIBRARY_NAME)
+	Dim System As JavaObject
+	System.InitializeStatic("java.lang.System")
+	'System.RunMethod("loadLibrary",Array(cv2.NATIVE_LIBRARY_NAME))
+	System.RunMethod("load",Array(File.Combine("E:\B4J\ImageTrans\Objects","opencv_java455.dll")))
+End Sub
+
+'Return true to allow the default exceptions handler to handle the uncaught exception.
+Sub Application_Error (Error As Exception, StackTrace As String) As Boolean
+	Return True
+End Sub
+
+Sub Button1_Click
+	Log("click")
+	Dim before As cvMat
+	before = Image2cvMat(File.DirApp,"before.jpg")
+	Dim after As cvMat
+	after = Image2cvMat(File.DirApp,"after.jpg")
+	Log(DetectMotion(before,before))
+	'DetectMotion(before,after)
+End Sub
+
+Sub DetectMotion(before As cvMat,after As cvMat) As Boolean
+	Dim scale As Double = before.Cols/before.Rows
+	cv2.resize(before,before,cv2.size(200,200/scale))
+	cv2.resize(after,after,cv2.size(200,200/scale))
+	Dim beforeGray As cvMat
+	beforeGray.Initialize(Null)
+	Dim afterGray As cvMat
+	afterGray.Initialize(Null)
+	cv2.cvtColor(before,beforeGray,"COLOR_BGR2GRAY")
+	cv2.cvtColor(after,afterGray,"COLOR_BGR2GRAY")
+	cv2.gaussianBlur(beforeGray,beforeGray,cv2.size(5,5),0,0)
+	cv2.gaussianBlur(afterGray,afterGray,cv2.size(5,5),0,0)
+	Dim diff As cvMat
+	diff.Initialize(Null)
+	cv2.absdiff(beforeGray,afterGray,diff)
+	Dim thresh As cvMat
+	thresh.Initialize(Null)
+	cv2.threshold(diff,thresh,25, 255, cv2.procEnum("THRESH_BINARY"))
+	cv2.dilate(thresh,thresh,cv2.getStructuringElement("MORPH_RECT",10,10))
+	'File.WriteBytes(File.DirApp,"thresh.jpg",thresh.mat2bytes)
+	Dim hierarchy As cvMat
+	hierarchy.Initialize(Null)
+	Dim contours As List
+	contours.Initialize
+	cv2.findContours(thresh,contours,hierarchy,cv2.procEnum("RETR_LIST"),cv2.procEnum("CHAIN_APPROX_SIMPLE"))
+	For Each c As JavaObject In contours
+		Dim mat As cvMat
+		mat.Initialize(Null)
+		mat.JO=c
+		If cv2.contourArea(mat) > 400 Then
+			Return True
+		End If
+	Next
+	Return False
+End Sub
+
+Public Sub points2Mat(points As List) As JavaObject
+	Dim matOfPoint2f As JavaObject
+	matOfPoint2f.InitializeNewInstance("org.opencv.core.MatOfPoint2f",Null)
+	matOfPoint2f.RunMethod("fromList",Array(points))
+	Return matOfPoint2f
+End Sub
+
+Sub DetectTextRotation As Double
+	Dim mat As cvMat
+	mat = Image2cvMat(File.DirApp,"test2.jpg-mask.png")
+	Dim scale As Double = mat.Cols/mat.Rows
+	cv2.resize(mat,mat,cv2.size(200,200/scale))
+	Dim gray As cvMat
+	gray.Initialize(Null)
+	cv2.cvtColor(mat,gray,"COLOR_BGR2GRAY")
+	Dim thresh As cvMat
+	thresh.Initialize(Null)
+	cv2.threshold(gray,thresh,200,255,cv2.procEnum("THRESH_BINARY")+cv2.procEnum("THRESH_OTSU"))
+	Dim hierarchy As cvMat
+	hierarchy.Initialize(Null)
+	Dim contours As List
+	contours.Initialize
+	cv2.dilate(thresh,thresh,cv2.getStructuringElement("MORPH_RECT",10,10))
+	cv2.bitwise_not(thresh,thresh)
+	File.WriteBytes(File.DirApp,"thresh.jpg",thresh.mat2bytes)
+	cv2.findContours(thresh,contours,hierarchy,cv2.procEnum("RETR_LIST"),cv2.procEnum("CHAIN_APPROX_SIMPLE"))
+	Dim angles As List
+	angles.Initialize
+	For Each contour In contours
+		Dim rotatedRect As JavaObject = cv2.minAreaRect(MatOfPointAsMatOfPoint2F(contour))
+		Dim angle As Double = rotatedRect.GetField("angle")
+		If angle <> 90 And angle <> 180 Then
+			angles.Add(angle)
+		End If
+	Next
+	If angles.size > 0 Then
+		Dim index As Int = Floor(angles.Size/2)
+		Dim angle As Double = angles.Get(index)
+		Return angle
+	Else
+		Return 0
+	End If
+End Sub
+
+Sub MatOfPointAsMatOfPoint2F(matOfPoint As JavaObject) As JavaObject
+	Dim points As List = matOfPoint.RunMethod("toList",Null)
+	Return cv2.mat2fFromPointsList(points)
+End Sub
+
+Sub Image2cvMat(dirPath As String,imgPath As String) As cvMat
+	Dim srcMat As cvMat
+	Dim Bytes() As Byte
+	Bytes=File.ReadBytes(dirPath,imgPath)
+	srcMat=cv2.bytesToMat(Bytes)
+	Return srcMat
+End Sub

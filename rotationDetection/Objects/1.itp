@@ -7,21 +7,22 @@
         "test.jpg": {
             "boxes": [
                 {
-                    "suitableSize": 43,
+                    "targetGeometry": {
+                        "X": 52,
+                        "width": 176,
+                        "Y": 33,
+                        "height": 72
+                    },
+                    "degree": 346,
                     "geometry": {
-                        "X": 46,
+                        "X": 47,
                         "width": 186,
-                        "Y": 27,
+                        "Y": 28,
                         "height": 82
                     },
-                    "text": "",
-                    "target": ""
+                    "text": ""
                 }
-            ],
-            "text-removed": true
-        },
-        "thresh.jpg": {
-            "boxes": []
+            ]
         },
         "test2.jpg": {
             "boxes": [
@@ -32,6 +33,7 @@
                         "Y": 33,
                         "height": 72
                     },
+                    "degree": 13,
                     "geometry": {
                         "X": 196,
                         "width": 186,
@@ -49,7 +51,7 @@
         "chinesePunc": false,
         "dividerPosition": [
             0.03571428571428571,
-            0.6510204081632653
+            0.6806122448979591
         ],
         "translateAfterOCR": false,
         "vertical": false,
