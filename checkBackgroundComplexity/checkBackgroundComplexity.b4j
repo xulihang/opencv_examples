@@ -1,0 +1,315 @@
+﻿AppType=JavaFX
+Build1=Default,b4j.example
+File1=main.bjl
+FileGroup1=Default Group
+Group=Default Group
+Library1=javaobject
+Library2=jcore
+Library3=jfx
+Library4=threading
+Library5=xui views
+Module1=cv2
+Module2=cvMat
+Module3=|relative|..\shared\ImageWindow
+NumberOfFiles=1
+NumberOfLibraries=5
+NumberOfModules=3
+Version=10
+@EndOfDesignText@
+#Region Project Attributes 
+	#MainFormWidth: 600
+	#MainFormHeight: 600 
+#End Region
+
+#AdditionalJar: opencv-490
+
+Sub Process_Globals
+	Type Point2D (X As Double,Y As Double)
+	Private fx As JFX
+	Private MainForm As Form
+	Private Button1 As Button
+	Private ImageView1 As ImageView
+End Sub
+
+Sub AppStart (Form1 As Form, Args() As String)
+	MainForm = Form1
+	MainForm.RootPane.LoadLayout("main") 'Load the layout file.
+	MainForm.Show
+	MainForm.AlwaysOnTop=True
+	cv2.Initialize
+	loadOpenCV
+End Sub
+
+Sub loadOpenCV
+	Log(cv2.NATIVE_LIBRARY_NAME)
+	Dim System As JavaObject
+	System.InitializeStatic("java.lang.System")
+	System.RunMethod("loadLibrary",Array(cv2.NATIVE_LIBRARY_NAME))
+End Sub
+
+'Return true to allow the default exceptions handler to handle the uncaught exception.
+Sub Application_Error (Error As Exception, StackTrace As String) As Boolean
+	Return True
+End Sub
+
+Sub Button1_Click
+	Dim files As List = Array("complex1.jpg", "simple1.jpg")
+
+	Log("------------------------------------------------------------------------------------------")
+
+	For Each fileName As String In files
+		AnalyzeImageComplexity(File.Combine(File.DirApp,fileName))
+	Next
+End Sub
+
+Sub AnalyzeImageComplexity(imagePath As String)
+	' 1. 读取图像
+	Dim img As cvMat = cv2.imread(imagePath)
+	If img.empty Then
+		Log("无法读取文件: " & imagePath)
+		Return
+	End If
+
+	' 转换为灰度图
+	Dim gray As cvMat
+	gray.Initialize(Null)
+	cv2.cvtColor(img, gray, "COLOR_BGR2GRAY")
+    
+	Dim totalPixels As Int = gray.Rows * gray.Cols
+
+	' --- 特征 A: 背景一致性 (Background Uniformity) ---
+	' 由于提供的cv2模块没有calcHist，这里使用JavaObject辅助函数
+	Dim hist As cvMat
+	hist.Initialize(Null)
+	cv2.calcHist(gray, hist)
+    
+	' 找到出现次数最多的颜色及其邻域
+	Dim maxVal As Double = 0
+	Dim dominantIndex As Int = 0
+    
+	' 读取直方图数据 (256个灰度级)
+	Dim histData(256) As Double
+	For i = 0 To 255
+		' cvMat.get 返回的是 Double 数组
+		Dim val() As Double = hist.get(Array As Int(i, 0))
+		histData(i) = val(0)
+        
+		If histData(i) > maxVal Then
+			maxVal = histData(i)
+			dominantIndex = i
+		End If
+	Next
+    
+	' 计算峰值周围 +-10 范围内的像素总数
+	Dim rangeMin As Int = Max(0, dominantIndex - 10)
+	Dim rangeMax As Int = Min(255, dominantIndex + 10)
+	Dim dominantPixelCount As Double = 0
+    
+	For i = rangeMin To rangeMax
+		dominantPixelCount = dominantPixelCount + histData(i)
+	Next
+    
+	Dim uniformityScore As Double = dominantPixelCount / totalPixels
+
+	' --- 特征 B: 边缘密度 (Edge Density) ---
+	Dim edges As cvMat
+	edges.Initialize(Null)
+	' 使用 Canny 边缘检测
+	cv2.Canny(gray, edges, 100, 200)
+    
+	' 统计边缘像素点 (白色点)
+	Dim edgePixelCount As Int = cv2.countNonZero(edges)
+	Dim edgeDensity As Double = edgePixelCount / totalPixels
+
+	' --- 判定逻辑 ---
+	Dim result As String
+	' 阈值设定: 一致性 > 0.4 且 边缘密度 < 0.15 视为简单背景
+	If uniformityScore > 0.4 And edgeDensity < 0.15 Then
+		result = "简单背景 (Simple)"
+	Else
+		result = "复杂背景 (Complex)"
+	End If
+	Log(imagePath)
+	Log(uniformityScore)
+	Log(edgeDensity)
+	Log(result)
+End Sub
+
+' 辅助：计算直方图
+Sub CalcHistHelper(src As cvMat, dstHist As cvMat)
+	Dim Imgproc As JavaObject
+	Imgproc.InitializeStatic("org.opencv.imgproc.Imgproc")
+    
+	' 准备参数：List<Mat> images
+	Dim srcList As List
+	srcList.Initialize
+	srcList.Add(src.getJO)
+    
+	' MatOfInt channels = {0}
+	Dim channels As JavaObject
+	channels.InitializeNewInstance("org.opencv.core.MatOfInt", Array(Array As Int(0)))
+    
+	' MatOfInt histSize = {256}
+	Dim histSize As JavaObject
+	histSize.InitializeNewInstance("org.opencv.core.MatOfInt", Array(Array As Int(256)))
+    
+	' MatOfFloat ranges = {0, 256}
+	Dim ranges As JavaObject
+	ranges.InitializeNewInstance("org.opencv.core.MatOfFloat", Array(Array As Float(0, 256)))
+	
+	Dim emptyMask As JavaObject
+	emptyMask.InitializeNewInstance("org.opencv.core.Mat", Null)
+	
+	' 调用 Imgproc.calcHist
+	' calcHist(List<Mat> images, MatOfInt channels, Mat mask, Mat hist, MatOfInt histSize, MatOfFloat ranges)
+	Imgproc.RunMethod("calcHist", Array(srcList, channels, emptyMask, dstHist.getJO, histSize, ranges))
+End Sub
+
+
+Sub Crop As Double
+	Dim mat As cvMat
+	mat = Image2cvMat(File.DirApp,"book.jpg")
+	Dim mask As cvMat
+	mask = Image2cvMat(File.DirApp,"mask.png")
+	
+	Dim gray As cvMat
+	gray.Initialize(Null)
+	cv2.cvtColor(mask,gray,"COLOR_BGR2GRAY")
+	
+	Dim thresh As cvMat
+	thresh.Initialize(Null)
+	cv2.threshold(gray,thresh,200,255,cv2.procEnum("THRESH_BINARY_INV")+cv2.procEnum("THRESH_OTSU"))
+	Dim hierarchy As cvMat
+	hierarchy.Initialize(Null)
+	Dim contours As List
+	contours.Initialize
+	cv2.dilate(thresh,thresh,cv2.getStructuringElement("MORPH_RECT",10,10))
+	cv2.bitwise_not(thresh,thresh)
+	File.WriteBytes(File.DirApp,"thresh.jpg",thresh.mat2bytes)
+	cv2.findContours(thresh,contours,hierarchy,cv2.procEnum("RETR_LIST"),cv2.procEnum("CHAIN_APPROX_SIMPLE"))
+	Dim angles As List
+	angles.Initialize
+	Dim largestContour As JavaObject
+	Dim largestArea As Double
+	For Each contour As JavaObject In contours
+		Dim cnt As cvMat = cv2.matJO2mat(contour)
+		Dim area As Double = cv2.contourArea(cnt)
+		If area>largestArea Then
+			largestContour = contour
+			largestArea = area
+		End If
+	Next
+	If largestContour.IsInitialized Then
+		Dim points As List = largestContour.RunMethod("toList",Null)
+		Dim r As JavaObject = cv2.minAreaRect(cv2.MatOfPointAsMatOfPoint2F(largestContour))
+		Dim center As JavaObject = r.GetField("center")
+		Dim centerX As Int = center.GetField("x")
+		Dim centerY As Int = center.GetField("y")
+		Dim topLeftPoint As Point2D
+		topLeftPoint.Initialize
+		Dim topLeftDist As Double = 0
+
+		Dim topRightPoint As Point2D
+		topRightPoint.Initialize
+		Dim topRightDist As Double = 0
+
+		Dim bottomLeftPoint As Point2D
+		bottomLeftPoint.Initialize
+		Dim bottomLeftDist As Double = 0
+
+		Dim bottomRightPoint As Point2D
+		bottomRightPoint.Initialize
+		Dim bottomRightDist As Double = 0
+ 
+		For Each p As JavaObject In points
+
+			
+			Dim px As Double = p.GetField("x")
+			Dim py As Double = p.GetField("y")
+
+			Dim dx As Double = px - centerX
+			Dim dy As Double = py - centerY
+			Dim dist As Double = Sqrt(dx*dx + dy*dy)
+
+			If px < centerX And py < centerY Then
+				If dist > topLeftDist Then
+					topLeftPoint.X = px
+					topLeftPoint.Y = py
+					topLeftDist = dist
+				End If
+			Else If px > centerX And py < centerY Then
+				If dist > topRightDist Then
+					topRightPoint.X = px
+					topRightPoint.Y = py
+					topRightDist = dist
+				End If
+			Else If px < centerX And py > centerY Then
+				If dist > bottomLeftDist Then
+					bottomLeftPoint.X = px
+					bottomLeftPoint.Y = py
+					bottomLeftDist = dist
+				End If
+			Else If px > centerX And py > centerY Then
+				If dist > bottomRightDist Then
+					bottomRightPoint.X = px
+					bottomRightPoint.Y = py
+					bottomRightDist = dist
+				End If
+			End If
+		Next
+
+		' 四点按照顺序：top-left, top-right, bottom-right, bottom-left
+		Dim ordered As List
+		ordered.Initialize
+		ordered.Add(topLeftPoint)
+		ordered.Add(topRightPoint)
+		ordered.Add(bottomRightPoint)
+		ordered.Add(bottomLeftPoint)
+
+		Log("Ordered Points: " & ordered)
+		
+		Dim points1 As List
+		points1.Initialize
+		
+		Dim Point1 As Point2D = topLeftPoint
+		Dim Point2 As Point2D = topRightPoint
+		Dim Point3 As Point2D = bottomRightPoint
+		Dim Point4 As Point2D = bottomLeftPoint
+		
+		For Each point As Point2D In ordered
+			points1.Add(cv2.point(point.X,point.Y))
+		Next
+	
+		Dim points2 As List
+		points2.Initialize
+	
+		Dim targetWidth As Int = Sqrt((Point2.X - Point1.X)*(Point2.X - Point1.X) + (Point2.Y - Point1.Y)*(Point2.Y - Point1.Y))
+		Dim targetHeight As Int = Sqrt((Point3.X - Point2.X)*(Point3.X - Point2.X) + (Point3.Y - Point2.Y)*(Point3.Y - Point2.Y))
+		points2.Add(cv2.point(0,0))
+		points2.Add(cv2.point(targetWidth,0))
+		points2.Add(cv2.point(targetWidth,targetHeight))
+		points2.Add(cv2.point(0,targetHeight))
+
+		Dim m1 As JavaObject
+		m1 = cv2.mat2fFromPointsList(points1)
+		Dim m2 As JavaObject
+		m2 = cv2.mat2fFromPointsList(points2)
+		Dim matrix As JavaObject = cv2.getPerspectiveTransform(m1,m2)
+	
+		Dim out As cvMat
+		out.Initialize(Null)
+		cv2.warpPerspective(mat,out,matrix,cv2.size(targetWidth,targetHeight))
+	    File.WriteBytes(File.DirApp,"out.jpg",out.mat2bytes)
+	End If
+	
+	
+End Sub
+
+
+Sub Image2cvMat(dirPath As String,imgPath As String) As cvMat
+	Dim srcMat As cvMat
+	Dim Bytes() As Byte
+	Bytes=File.ReadBytes(dirPath,imgPath)
+	srcMat=cv2.bytesToMat(Bytes)
+	Return srcMat
+End Sub

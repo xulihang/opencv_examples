@@ -1,0 +1,15 @@
+﻿ModuleBookmarks0=
+ModuleBookmarks1=
+ModuleBookmarks2=
+ModuleBookmarks3=
+ModuleBreakpoints0=
+ModuleBreakpoints1=
+ModuleBreakpoints2=
+ModuleBreakpoints3=
+ModuleClosedNodes0=
+ModuleClosedNodes1=
+ModuleClosedNodes2=
+ModuleClosedNodes3=
+NavigationStack=cvMat,getJO,27,0,Main,Button1_Click,45,2,cv2,warpAffine,345,0,cvMat,empty,11,0,cv2,calcHist,321,6,cv2,matJO2mat,298,0,cv2,countNonZero,300,0,Main,CalcHistHelper,148,6,Main,AnalyzeImageComplexity,58,6
+SelectedBuild=0
+VisibleModules=1,2,3
