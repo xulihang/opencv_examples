@@ -1,0 +1,63 @@
+﻿AppType=JavaFX
+Build1=Default,b4j.example
+File1=main.bjl
+FileGroup1=Default Group
+Group=Default Group
+Library1=javaobject
+Library2=jcore
+Library3=jfx
+Library4=threading
+Library5=xui views
+Module1=cv2
+Module2=cvMat
+Module3=FilmMaskRemover
+Module4=|relative|..\shared\ImageWindow
+NumberOfFiles=1
+NumberOfLibraries=5
+NumberOfModules=4
+Version=10
+@EndOfDesignText@
+#Region Project Attributes 
+	#MainFormWidth: 600
+	#MainFormHeight: 600 
+#End Region
+
+#AdditionalJar: opencv-490
+
+Sub Process_Globals
+	Private fx As JFX
+	Private MainForm As Form
+	Private Button1 As Button
+	Private ImageView1 As ImageView
+End Sub
+
+Sub AppStart (Form1 As Form, Args() As String)
+	MainForm = Form1
+	MainForm.RootPane.LoadLayout("main") 'Load the layout file.
+	MainForm.Show
+	MainForm.AlwaysOnTop=True
+	cv2.Initialize
+	loadOpenCV
+	ImageView1.SetImage(fx.LoadImage(File.DirApp,"raw.jpg"))
+	Dim remover As FilmMaskRemover
+	remover.Initialize
+	remover.Process(File.Combine(File.DirApp,"raw.jpg"),File.Combine(File.DirApp,"o.jpg"))
+End Sub
+
+Sub loadOpenCV
+	Log(cv2.NATIVE_LIBRARY_NAME)
+	Dim System As JavaObject
+	System.InitializeStatic("java.lang.System")
+	'System.RunMethod("loadLibrary",Array(cv2.NATIVE_LIBRARY_NAME))
+	System.RunMethod("load",Array(File.Combine("C:\Users\HP\Documents\GitHub\ImageTrans\Objects","opencv_java490.dll")))
+End Sub
+
+'Return true to allow the default exceptions handler to handle the uncaught exception.
+Sub Application_Error (Error As Exception, StackTrace As String) As Boolean
+	Return True
+End Sub
+
+Sub Button1_Click
+	Log("click")
+	
+End Sub
