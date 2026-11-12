@@ -1,0 +1,432 @@
+﻿AppType=JavaFX
+Build1=Default,b4j.example
+File1=main.bjl
+FileGroup1=Default Group
+Group=Default Group
+Library1=javaobject
+Library2=jcore
+Library3=jfx
+Library4=threading
+Library5=xui views
+Library6=json
+Module1=BalloonFitter
+Module10=Utils
+Module11=VerticalTextEngine
+Module2=BBCodeParser
+Module3=cv2
+Module4=cvMat
+Module5=EnumClass
+Module6=HorizontalTextEngine
+Module7=|relative|..\shared\ImageWindow
+Module8=LanguageUtils
+Module9=TextFlow
+NumberOfFiles=1
+NumberOfLibraries=6
+NumberOfModules=11
+Version=8.8
+@EndOfDesignText@
+#Region Project Attributes 
+	#MainFormWidth: 600
+	#MainFormHeight: 600 
+#End Region
+
+#AdditionalJar: opencv-490
+
+Sub Process_Globals
+	Private fx As JFX
+	Private MainForm As Form
+	Private Button1 As Button
+	Private ImageView1 As ImageView
+End Sub
+
+Sub AppStart (Form1 As Form, Args() As String)
+	MainForm = Form1
+	MainForm.RootPane.LoadLayout("main") 'Load the layout file.
+	MainForm.Show
+	MainForm.AlwaysOnTop=True
+	cv2.Initialize
+	loadOpenCV
+	ImageView1.SetImage(fx.LoadImage(ObjectsDir,"18_094.jpg-balloonmask.png"))
+End Sub
+
+Sub loadOpenCV
+	Log(cv2.NATIVE_LIBRARY_NAME)
+	Dim System As JavaObject
+	System.InitializeStatic("java.lang.System")
+	'System.RunMethod("loadLibrary",Array(cv2.NATIVE_LIBRARY_NAME))
+	System.RunMethod("load",Array(File.Combine(File.DirApp,"opencv_java490.dll")))
+End Sub
+
+'Return true to allow the default exceptions handler to handle the uncaught exception.
+Sub Application_Error (Error As Exception, StackTrace As String) As Boolean
+	Return True
+End Sub
+
+Public Sub BoxesFromMask(path As String) As List
+	Dim mat As cvMat
+	mat = Image2cvMat(path,"")
+	Dim gray As cvMat
+	gray.Initialize(Null)
+	cv2.cvtColor(mat,gray,"COLOR_BGR2GRAY")
+	Dim thresh As cvMat
+	thresh.Initialize(Null)
+	cv2.threshold(gray,thresh,200,255,cv2.procEnum("THRESH_BINARY")+cv2.procEnum("THRESH_OTSU"))
+	cv2.dilate(thresh,thresh,cv2.getStructuringElement("MORPH_RECT",10,10))
+	Dim hierarchy As cvMat
+	hierarchy.Initialize(Null)
+	Dim contours As List
+	contours.Initialize
+	cv2.findContours(thresh,contours,hierarchy,cv2.procEnum("RETR_LIST"),cv2.procEnum("CHAIN_APPROX_SIMPLE"))
+	Dim boxes As List
+	boxes.Initialize
+	For Each contour In contours
+		Dim contourMat As cvMat
+		contourMat.Initialize(Null)
+		contourMat.JO = contour
+		Dim rect As JavaObject = cv2.boundingRect(contourMat)
+		Dim X As Int = rect.GetField("x")
+		Dim Y As Int = rect.GetField("y")
+		Dim width As Int = rect.GetField("width")
+		Dim height As Int = rect.GetField("height")
+		Dim box As Map = CreateBox(X,Y,width,height)
+		boxes.Add(box)
+		' 释放每次循环创建的contourMat
+		contourMat.release
+	Next
+	' 释放cvMat资源
+	mat.release
+	gray.release
+	thresh.release
+	hierarchy.release
+	Return boxes
+End Sub
+
+Sub CreateBox(X As Int,Y As Int,width As Int,height As Int) As Map
+	Dim box As Map
+	box.Initialize
+	Dim boxGeometry As Map=CreateGeometry(X,Y,width,height)
+	box.Put("geometry",boxGeometry)
+	box.Put("text","")
+	Return box
+End Sub
+
+Sub CreateBoxUsingGeometry(boxGeometry As Map) As Map
+	Dim box As Map
+	box.Initialize
+	box.Put("geometry",boxGeometry)
+	box.Put("text","")
+	Return box
+End Sub
+
+Sub CreateGeometry(X As Int,Y As Int,width As Int,height As Int) As Map
+	Dim boxGeometry As Map
+	boxGeometry.Initialize
+	boxGeometry.Put("X",X)
+	boxGeometry.Put("Y",Y)
+	boxGeometry.Put("width",width)
+	boxGeometry.Put("height",height)
+	Return boxGeometry
+End Sub
+
+
+
+Sub Button1_Click
+	Dim dir As String = ObjectsDir
+	Dim imageName As String = "18_094.jpg"
+	Dim maskName As String = imageName & "-balloonmask.png"
+	Dim mask As cvMat = Image2cvMat(dir,maskName)
+	'红色气泡为255，其余为0
+	Dim gray As cvMat
+	gray.Initialize(Null)
+	cv2.cvtColor(mask,gray,"COLOR_BGR2GRAY")
+	Dim bubbles As cvMat
+	bubbles.Initialize(Null)
+	cv2.threshold(gray,bubbles,30,255,cv2.procEnum("THRESH_BINARY"))
+	'创建白色背景的画布，再把红色气泡画到画布上
+	Dim blank As cvMat = cv2.matZeros(Array(mask.Rows,mask.Cols,cv2.cvType("CV_8UC3")))
+	Dim canvas As cvMat
+	canvas.Initialize(Null)
+	cv2.bitwise_not(blank,canvas)
+
+	'读取itp里的boxes
+	Dim boxList As List = ReadBoxesFromITP(dir,"Untitled.itp",imageName)
+	Log("boxes: " & boxList.Size)
+	Dim geometries As List
+	geometries.Initialize
+	For i = 0 To boxList.Size - 1
+		Dim box As Map = boxList.Get(i)
+		geometries.Add(box.Get("geometry"))
+	Next
+
+	'第一张图：原始box
+	Dim beforeMat As cvMat = canvas.cloneMat
+	cv2.copyTo(mask,beforeMat,bubbles)
+	DrawBoxes(beforeMat,geometries)
+	Dim beforeName As String = imageName & "-boxes.png"
+	cv2.imwrite(File.Combine(dir,beforeName),beforeMat)
+	beforeMat.release
+
+	'调整boxes：传入boxes和掩膜，返回收缩到气泡掩膜内的boxes
+	Dim fittedBoxes As List = BalloonFitter.FitBoxes(boxList,mask)
+	Dim fittedGeometries As List
+	fittedGeometries.Initialize
+	For i = 0 To fittedBoxes.Size - 1
+		Dim fittedBox As Map = fittedBoxes.Get(i)
+		Dim fittedGeometry As Map = fittedBox.Get("geometry")
+		Log("adjust: " & geometries.Get(i) & " -> " & fittedGeometry)
+		fittedGeometries.Add(fittedGeometry)
+	Next
+
+	'第二张图：调整后的box
+	Dim afterMat As cvMat = canvas.cloneMat
+	cv2.copyTo(mask,afterMat,bubbles)
+	DrawBoxes(afterMat,fittedGeometries)
+	Dim afterName As String = imageName & "-boxes-fitted.png"
+	cv2.imwrite(File.Combine(dir,afterName),afterMat)
+	afterMat.release
+	ImageView1.SetImage(fx.LoadImage(dir,afterName))
+
+	'测试：竖排文字填到左边的气泡，换行由气泡掩膜决定
+	Dim text As String = "老师！这里！这里！我旁边……"
+	Dim leftGeometry As Map = Null
+	For i = 0 To geometries.Size - 1
+		Dim g As Map = geometries.Get(i)
+		Dim gx As Int = g.Get("X")
+		If leftGeometry.IsInitialized = False Then
+			leftGeometry = g
+		Else
+			Dim leftX As Int = leftGeometry.Get("X")
+			If gx < leftX Then leftGeometry = g
+		End If
+	Next
+	If leftGeometry <> Null Then
+		Dim boxX As Int = leftGeometry.Get("X")
+		Dim boxY As Int = leftGeometry.Get("Y")
+		Dim boxWidth As Int = leftGeometry.Get("width")
+		Dim boxHeight As Int = leftGeometry.Get("height")
+		Dim fontName As String = "Microsoft YaHei"
+		Dim f As Font = fx.CreateFont(fontName,20,False,False)
+		Dim vte As VerticalTextEngine
+		vte.Initialize("zh",False,2)
+		vte.setBalloonMask(mask,boxX,boxY)
+		Dim textBitmap As B4XBitmap = vte.Draw(MainForm.RootPane,text,f,fontName,fx.Colors.Black,False,False,0,1.0,0,True,boxWidth,boxHeight,False,"",0,"LEFT",False)
+		vte.releaseBalloonMask
+
+		'合成：白色背景 + 气泡掩膜 + 文字
+		Dim compPane As Pane
+		compPane.Initialize("")
+		Dim bgIv As ImageView
+		bgIv.Initialize("")
+		bgIv.SetImage(fx.LoadImage(dir,maskName))
+		compPane.AddNode(bgIv,0,0,mask.Cols,mask.Rows)
+		Dim textIv As ImageView
+		textIv.Initialize("")
+		textIv.SetImage(textBitmap)
+		Dim textX As Int = boxX + boxWidth - textBitmap.Width
+		compPane.AddNode(textIv,textX,boxY,textBitmap.Width,textBitmap.Height)
+		MainForm.RootPane.AddNode(compPane,0,0,mask.Cols,mask.Rows)
+		Dim snapshot As B4XBitmap = compPane.Snapshot2(fx.Colors.White)
+		compPane.RemoveNodeFromParent
+		Dim textName As String = imageName & "-text.png"
+		Dim out As OutputStream = File.OpenOutput(dir,textName,False)
+		snapshot.WriteToStream(out,100,"PNG")
+		out.Close
+		ImageView1.SetImage(fx.LoadImage(dir,textName))
+	End If
+
+	canvas.release
+	blank.release
+	gray.release
+	bubbles.release
+	mask.release
+End Sub
+
+'Objects文件夹在debug和编译后可能位于不同位置
+Sub ObjectsDir As String
+	If File.Exists(File.DirApp,"Untitled.itp") Then Return File.DirApp
+	Dim dir As String = File.Combine(File.DirApp,"Objects")
+	If File.Exists(dir,"Untitled.itp") Then Return dir
+	Return File.DirApp
+End Sub
+
+'读取itp中指定图片的boxes
+Sub ReadBoxesFromITP(dir As String,fileName As String,imageName As String) As List
+	Dim boxes As List
+	boxes.Initialize
+	Dim parser As JSONParser
+	parser.Initialize(File.ReadString(dir,fileName))
+	Dim root As Map = parser.NextObject
+	Dim images As Map = root.Get("images")
+	If images.ContainsKey(imageName) = False Then Return boxes
+	Dim imageInfo As Map = images.Get(imageName)
+	If imageInfo.ContainsKey("boxes") = False Then Return boxes
+	Dim rawBoxes As List = imageInfo.Get("boxes")
+	For i = 0 To rawBoxes.Size - 1
+		Dim rawBox As Map = rawBoxes.Get(i)
+		Dim box As Map
+		box.Initialize
+		Dim geometry As Map
+		geometry.Initialize
+		If rawBox.ContainsKey("geometry") Then
+			Dim rawGeometry As Map = rawBox.Get("geometry")
+			geometry.Put("X",ObjectToInt(rawGeometry.Get("X")))
+			geometry.Put("Y",ObjectToInt(rawGeometry.Get("Y")))
+			geometry.Put("width",ObjectToInt(rawGeometry.Get("width")))
+			geometry.Put("height",ObjectToInt(rawGeometry.Get("height")))
+		End If
+		box.Put("geometry",geometry)
+		If rawBox.ContainsKey("text") Then
+			box.Put("text",rawBox.Get("text"))
+		Else
+			box.Put("text","")
+		End If
+		boxes.Add(box)
+	Next
+	Return boxes
+End Sub
+
+Sub ObjectToInt(value As Object) As Int
+	Dim t As String = GetType(value)
+	If t = "java.lang.Double" Or t = "java.lang.Float" Then
+		Dim d As Double = value
+		Return Floor(d + 0.5)
+	Else
+		Return value
+	End If
+End Sub
+
+Sub DrawBoxes(img As cvMat,geometries As List)
+	Dim color As Object = cv2.Scalar(255,0,0) 'BGR：蓝色
+	For i = 0 To geometries.Size - 1
+		Dim geometry As Map = geometries.Get(i)
+		Dim X As Int = geometry.Get("X")
+		Dim Y As Int = geometry.Get("Y")
+		Dim width As Int = geometry.Get("width")
+		Dim height As Int = geometry.Get("height")
+		Dim rec As Object = cv2.rect(X,Y,width,height)
+		cv2.rectangle(img,rec,color,1,cv2.procEnum("LINE_8"))
+	Next
+End Sub
+
+Sub DetectTextRotation As Double
+	Dim mat As cvMat
+	mat = Image2cvMat(File.DirApp,"test2.jpg-mask.png")
+	Dim scale As Double = mat.Cols/mat.Rows
+	cv2.resize(mat,mat,cv2.size(200,200/scale))
+	Dim gray As cvMat
+	gray.Initialize(Null)
+	cv2.cvtColor(mat,gray,"COLOR_BGR2GRAY")
+	Dim thresh As cvMat
+	thresh.Initialize(Null)
+	cv2.threshold(gray,thresh,200,255,cv2.procEnum("THRESH_BINARY")+cv2.procEnum("THRESH_OTSU"))
+	Dim hierarchy As cvMat
+	hierarchy.Initialize(Null)
+	Dim contours As List
+	contours.Initialize
+	cv2.dilate(thresh,thresh,cv2.getStructuringElement("MORPH_RECT",10,10))
+	cv2.bitwise_not(thresh,thresh)
+	File.WriteBytes(File.DirApp,"thresh.jpg",thresh.mat2bytes)
+	cv2.findContours(thresh,contours,hierarchy,cv2.procEnum("RETR_LIST"),cv2.procEnum("CHAIN_APPROX_SIMPLE"))
+	Dim angles As List
+	angles.Initialize
+	For Each contour In contours
+		Dim rotatedRect As JavaObject = cv2.minAreaRect(MatOfPointAsMatOfPoint2F(contour))
+		Dim angle As Double = rotatedRect.GetField("angle")
+		If angle <> 90 And angle <> 180 Then
+			angles.Add(angle)
+		End If
+	Next
+	If angles.size > 0 Then
+		Dim index As Int = Floor(angles.Size/2)
+		Dim angle As Double = angles.Get(index)
+		Return angle
+	Else
+		Return 0
+	End If
+End Sub
+
+Sub MatOfPointAsMatOfPoint2F(matOfPoint As JavaObject) As JavaObject
+	Dim points As List = matOfPoint.RunMethod("toList",Null)
+	Return cv2.mat2fFromPointsList(points)
+End Sub
+
+Sub Image2cvMat(dirPath As String,imgPath As String) As cvMat
+	Dim srcMat As cvMat
+	Dim Bytes() As Byte
+	Bytes=File.ReadBytes(dirPath,imgPath)
+	srcMat=cv2.bytesToMat(Bytes)
+	Return srcMat
+End Sub
+
+
+Sub OverlappingPercent(boxGeometry1 As Map,boxGeometry2 As Map) As Double
+	'Log("boxGeometry1"&boxGeometry1)
+	'Log("boxGeometry2"&boxGeometry2)
+	Dim X1,Y1,W1,H1 As Int
+	X1=boxGeometry1.Get("X")
+	Y1=boxGeometry1.Get("Y")
+	W1=boxGeometry1.Get("width")
+	H1=boxGeometry1.Get("height")
+	Dim X2,Y2,W2,H2 As Int
+	X2=boxGeometry2.Get("X")
+	Y2=boxGeometry2.Get("Y")
+	W2=boxGeometry2.Get("width")
+	H2=boxGeometry2.Get("height")
+	Dim theSmallerX,theBiggerX,theSmallerXWidth,theBiggerXWidth As Int
+	If theSmallerOneIndex(X1,X2)=0 Then
+		theSmallerX=X1
+		theBiggerX=X2
+		theSmallerXWidth=W1
+		theBiggerXWidth=W2
+	Else
+		theSmallerX=X2
+		theBiggerX=X1
+		theSmallerXWidth=W2
+		theBiggerXWidth=W1
+	End If
+	Dim theSmallerY,theBiggerY,theSmallerYHeight,theBiggerYHeight As Int
+	If theSmallerOneIndex(Y1,Y2)=0 Then
+		theSmallerY=Y1
+		theBiggerY=Y2
+		theSmallerYHeight=H1
+		theBiggerYHeight=H2
+	Else
+		theSmallerY=Y2
+		theBiggerY=Y1
+		theSmallerYHeight=H2
+		theBiggerYHeight=H1
+	End If
+
+	If theSmallerX+theSmallerXWidth>=theBiggerX And theSmallerY+theSmallerYHeight>=theBiggerY Then
+		'overlapping
+		Dim overlappingArea As Double = (theSmallerOne(X1+W1,X2+W2)-theBiggerX)*(theSmallerOne(Y1+H1,Y2+H2)-theBiggerY)
+		Dim area1,area2 As Double
+		area1=W1*H1
+		area2=W2*H2
+		Dim theSmallArea As Int=theSmallerOne(area1,area2)
+		'Log("overlappingArea:"&overlappingArea)
+		'Log("theSmallArea:"&theSmallArea)
+		'Log("overlapping percent:")
+		'Log(overlappingArea/theSmallArea)
+		Return overlappingArea/theSmallArea
+	Else
+		Return 0
+	End If
+End Sub
+
+Sub theSmallerOneIndex(X1 As Int,X2 As Int) As Int
+	If X1<X2 Then
+		Return 0
+	Else
+		Return 1
+	End If
+End Sub
+
+
+Sub theSmallerOne(X1 As Int,X2 As Int) As Int
+	If X1<X2 Then
+		Return X1
+	Else
+		Return X2
+	End If
+End Sub
