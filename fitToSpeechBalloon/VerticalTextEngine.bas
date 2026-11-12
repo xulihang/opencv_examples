@@ -29,6 +29,8 @@ Sub Class_Globals
 	Private mHasBalloonMask As Boolean
 	Private mBalloonMaskOffsetX As Int
 	Private mBalloonMaskOffsetY As Int
+	'计算气泡掩膜时额外的x偏移（像素），正值表示文字相对掩膜往左偏。由调用方（TextBox）设置，和框宽无关。
+	Public horizontalMaskOffsetX As Int
 	Type VerticalTextEngineChar (f As Font,run As TextRun,color As Paint,horizontal As Boolean,runWordspace As Double,text As String,rect As B4XRect,zeroWordspace As Boolean,imgWidth As Double,imgHeight As Double,textImage As B4XBitmap,offsetX As Double,offsetY As Double,fixedRectForRun As B4XRect,fixedWidth As Boolean,fixedHeight As Boolean,padding As Double)
 End Sub
 
@@ -608,8 +610,9 @@ End Sub
 'maskX用来取这一列的可用高度（中心线），maskRightX是最右那条线：
 '只有最右这条线所在的行也在掩膜内，字才不会从列右边（也就是朝向气泡外侧的那一边）露出去。
 Private Sub MaskColumnHeight(previousWidth As Double,columnWidth As Double,boxWidth As Int,boxHeight As Int) As Double
-	Dim maskX As Int = mBalloonMaskOffsetX + boxWidth - Floor(previousWidth) - Floor(columnWidth/2)
-	Dim maskRightX As Int = mBalloonMaskOffsetX + boxWidth - Floor(previousWidth) - 1
+	'horizontalMaskOffsetX为调用方设置的额外x偏移（像素），正值表示文字相对掩膜往左偏，所以掩膜的x要往右加
+	Dim maskX As Int = mBalloonMaskOffsetX + boxWidth - Floor(previousWidth) - Floor(columnWidth/2) + horizontalMaskOffsetX
+	Dim maskRightX As Int = mBalloonMaskOffsetX + boxWidth - Floor(previousWidth) - 1 + horizontalMaskOffsetX
 	Dim cols As Int = mBalloonMask.Cols
 	Dim rows As Int = mBalloonMask.Rows
 	If maskX < 0 Or maskX >= cols Then Return 0

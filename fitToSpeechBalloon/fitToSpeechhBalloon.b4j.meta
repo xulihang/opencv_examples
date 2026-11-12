@@ -34,6 +34,6 @@ ModuleClosedNodes6=
 ModuleClosedNodes7=
 ModuleClosedNodes8=
 ModuleClosedNodes9=
-NavigationStack=VerticalTextEngine,releaseBalloonMask,644,0,cvMat,get,42,0,VerticalTextEngine,DrawTextImage,728,0,VerticalTextEngine,WrapText,596,0,VerticalTextEngine,setBalloonMask,604,0,Main,AppStart,21,0,VerticalTextEngine,Class_Globals,14,0,Main,Process_Globals,7,0,Main,BoxesFromMask,67,0,Main,Button1_Click,180,0
+NavigationStack=cvMat,get,42,0,VerticalTextEngine,DrawTextImage,728,0,VerticalTextEngine,WrapText,596,0,VerticalTextEngine,setBalloonMask,604,0,Main,AppStart,21,0,Main,Process_Globals,7,0,Main,BoxesFromMask,67,0,VerticalTextEngine,Class_Globals,15,0,VerticalTextEngine,Initialize,31,0,Main,Button1_Click,189,0
 SelectedBuild=0
 VisibleModules=3,4,7,1,11,10,2,6,5,8

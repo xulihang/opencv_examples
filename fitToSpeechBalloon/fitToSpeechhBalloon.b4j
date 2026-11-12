@@ -210,6 +210,14 @@ Sub Button1_Click
 		vte.Initialize("zh",False,2)
 		vte.setBalloonMask(mask,boxX,boxY)
 		Dim textBitmap As B4XBitmap = vte.Draw(MainForm.RootPane,text,f,fontName,fx.Colors.Black,False,False,0,1.0,0,True,boxWidth,boxHeight,False,"",0,"LEFT",False)
+		'水平居中：文字图（宽度为列宽之和）不够框宽时整体右移，量掩膜时列的x也要相应右移（horizontalMaskOffsetX），再重排一次
+		Dim textOffsetX As Int = (boxWidth - textBitmap.Width) / 2
+		If textOffsetX > 0 Then
+			vte.horizontalMaskOffsetX = textOffsetX
+			textBitmap = vte.Draw(MainForm.RootPane,text,f,fontName,fx.Colors.Black,False,False,0,1.0,0,True,boxWidth,boxHeight,False,"",0,"LEFT",False)
+		Else
+			textOffsetX = 0
+		End If
 		vte.releaseBalloonMask
 
 		'合成：白色背景 + 气泡掩膜 + 文字
@@ -222,7 +230,7 @@ Sub Button1_Click
 		Dim textIv As ImageView
 		textIv.Initialize("")
 		textIv.SetImage(textBitmap)
-		Dim textX As Int = boxX + boxWidth - textBitmap.Width
+		Dim textX As Int = boxX + textOffsetX
 		compPane.AddNode(textIv,textX,boxY,textBitmap.Width,textBitmap.Height)
 		MainForm.RootPane.AddNode(compPane,0,0,mask.Cols,mask.Rows)
 		Dim snapshot As B4XBitmap = compPane.Snapshot2(fx.Colors.White)
