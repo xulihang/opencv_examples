@@ -603,20 +603,25 @@ Public Sub releaseBalloonMask
 End Sub
 
 '量一下当前列在气泡掩膜里的实际高度。
-'竖排文字从文字框右边开始往左排，previousWidth为已经排好的列总宽度，
-'所以当前列中心在掩膜中的x = 框的右边 - previousWidth - 列宽/2。
+'竖排文字从文字框右边开始往左排，previousWidth为已经排好的列总宽度。
+'当前列最右边的一条线在掩膜中的x = 框的右边 - previousWidth（再减1是因为框的右边这个像素本身不属于列内）。
+'maskX用来取这一列的可用高度（中心线），maskRightX是最右那条线：
+'只有最右这条线所在的行也在掩膜内，字才不会从列右边（也就是朝向气泡外侧的那一边）露出去。
 Private Sub MaskColumnHeight(previousWidth As Double,columnWidth As Double,boxWidth As Int,boxHeight As Int) As Double
 	Dim maskX As Int = mBalloonMaskOffsetX + boxWidth - Floor(previousWidth) - Floor(columnWidth/2)
+	Dim maskRightX As Int = mBalloonMaskOffsetX + boxWidth - Floor(previousWidth) - 1
 	Dim cols As Int = mBalloonMask.Cols
 	Dim rows As Int = mBalloonMask.Rows
 	If maskX < 0 Or maskX >= cols Then Return 0
+	If maskRightX < 0 Or maskRightX >= cols Then Return 0
 	Dim top As Int = -1
 	Dim bottom As Int = -1
 	Dim yStart As Int = Max(mBalloonMaskOffsetY,0)
 	Dim yEnd As Int = Min(mBalloonMaskOffsetY+boxHeight,rows)-1
 	For y = yStart To yEnd
 		Dim value() As Double = mBalloonMask.get(Array As Int(y,maskX))
-		If value(0) > 0 Then
+		Dim rightValue() As Double = mBalloonMask.get(Array As Int(y,maskRightX))
+		If value(0) > 0 And rightValue(0) > 0 Then
 			If top = -1 Then top = y
 			bottom = y
 		End If

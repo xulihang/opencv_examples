@@ -23,7 +23,7 @@ Module9=TextFlow
 NumberOfFiles=1
 NumberOfLibraries=6
 NumberOfModules=11
-Version=8.8
+Version=10
 @EndOfDesignText@
 #Region Project Attributes 
 	#MainFormWidth: 600
@@ -205,7 +205,7 @@ Sub Button1_Click
 		Dim boxWidth As Int = leftGeometry.Get("width")
 		Dim boxHeight As Int = leftGeometry.Get("height")
 		Dim fontName As String = "Microsoft YaHei"
-		Dim f As Font = fx.CreateFont(fontName,20,False,False)
+		Dim f As Font = fx.CreateFont(fontName,15,False,False)
 		Dim vte As VerticalTextEngine
 		vte.Initialize("zh",False,2)
 		vte.setBalloonMask(mask,boxX,boxY)
