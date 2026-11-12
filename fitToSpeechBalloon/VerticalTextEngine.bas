@@ -31,6 +31,8 @@ Sub Class_Globals
 	Private mBalloonMaskOffsetY As Int
 	'计算气泡掩膜时额外的x偏移（像素），正值表示文字相对掩膜往左偏。由调用方（TextBox）设置，和框宽无关。
 	Public horizontalMaskOffsetX As Int
+	'计算气泡掩膜时额外的y偏移（像素），正值表示文字相对掩膜往下偏（垂直居中时文字图下移的量）。由调用方设置。
+	Public verticalMaskOffsetY As Int
 	Type VerticalTextEngineChar (f As Font,run As TextRun,color As Paint,horizontal As Boolean,runWordspace As Double,text As String,rect As B4XRect,zeroWordspace As Boolean,imgWidth As Double,imgHeight As Double,textImage As B4XBitmap,offsetX As Double,offsetY As Double,fixedRectForRun As B4XRect,fixedWidth As Boolean,fixedHeight As Boolean,padding As Double)
 End Sub
 
@@ -609,8 +611,9 @@ End Sub
 '当前列最右边的一条线在掩膜中的x = 框的右边 - previousWidth（再减1是因为框的右边这个像素本身不属于列内）。
 'maskX用来取这一列的可用高度（中心线），maskRightX是最右那条线：
 '只有最右这条线所在的行也在掩膜内，字才不会从列右边（也就是朝向气泡外侧的那一边）露出去。
+'horizontalMaskOffsetX / verticalMaskOffsetY为调用方设置的额外偏移（像素，正值表示文字相对掩膜往左/往下偏），
+'所以量掩膜时x/y都要往右/往下加，这样算出来的可用高度与文字实际画的位置一致。
 Private Sub MaskColumnHeight(previousWidth As Double,columnWidth As Double,boxWidth As Int,boxHeight As Int) As Double
-	'horizontalMaskOffsetX为调用方设置的额外x偏移（像素），正值表示文字相对掩膜往左偏，所以掩膜的x要往右加
 	Dim maskX As Int = mBalloonMaskOffsetX + boxWidth - Floor(previousWidth) - Floor(columnWidth/2) + horizontalMaskOffsetX
 	Dim maskRightX As Int = mBalloonMaskOffsetX + boxWidth - Floor(previousWidth) - 1 + horizontalMaskOffsetX
 	Dim cols As Int = mBalloonMask.Cols
@@ -619,8 +622,10 @@ Private Sub MaskColumnHeight(previousWidth As Double,columnWidth As Double,boxWi
 	If maskRightX < 0 Or maskRightX >= cols Then Return 0
 	Dim top As Int = -1
 	Dim bottom As Int = -1
-	Dim yStart As Int = Max(mBalloonMaskOffsetY,0)
-	Dim yEnd As Int = Min(mBalloonMaskOffsetY+boxHeight,rows)-1
+	Dim yStart As Int = Max(mBalloonMaskOffsetY,0) + verticalMaskOffsetY
+	Dim yEnd As Int = Min(mBalloonMaskOffsetY+boxHeight,rows)-1 + verticalMaskOffsetY
+	If yEnd > rows - 1 Then yEnd = rows - 1
+	If yStart > yEnd Then Return 0
 	For y = yStart To yEnd
 		Dim value() As Double = mBalloonMask.get(Array As Int(y,maskX))
 		Dim rightValue() As Double = mBalloonMask.get(Array As Int(y,maskRightX))
